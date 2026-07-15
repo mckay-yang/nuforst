@@ -79,6 +79,7 @@ database/
 log/
 
 # ===== Project tooling =====
+AGENTS_*.md
 .plans/
 .specs/
 .worktrees/
