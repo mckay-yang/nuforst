@@ -8,7 +8,7 @@
 
 ## Branch Policy
 
-- Always retain the long-lived branches `main`, `develop`, `paper`, and `feature/nufrost-cd`.
+- Always retain the long-lived branches `main`, `develop`, and `feature/nufrost-cd`.
 - Name feature branches with the `feature/` prefix.
 - Name experimental branches with the `exp/` prefix.
 - Name temporary Codex branches with the `codex/` prefix.
