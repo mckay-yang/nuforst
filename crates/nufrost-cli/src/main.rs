@@ -131,6 +131,7 @@ struct EvalSampleCacheArgs {
 struct SamplePixelCurveArgs {
     cache_dir: PathBuf,
     sample_idx: usize,
+    holdout_seed: Option<u64>,
     min_joint_valid: usize,
     nufrost_config: Option<PathBuf>,
     hants_config: Option<PathBuf>,
@@ -273,6 +274,7 @@ impl Cli {
             "sample-pixel-curve" => Algorithm::SamplePixelCurve(SamplePixelCurveArgs {
                 cache_dir: sub.get_one::<PathBuf>("cache_dir").cloned().unwrap(),
                 sample_idx: *sub.get_one::<usize>("sample_idx").unwrap(),
+                holdout_seed: sub.get_one::<u64>("holdout_seed").copied(),
                 min_joint_valid: *sub.get_one::<usize>("min_joint_valid").unwrap(),
                 nufrost_config: sub.get_one::<PathBuf>("nufrost_config").cloned(),
                 hants_config: sub.get_one::<PathBuf>("hants_config").cloned(),
@@ -702,6 +704,15 @@ fn sample_pixel_curve_command() -> Command {
                 .value_name("N")
                 .required(true)
                 .value_parser(clap::value_parser!(usize)),
+        )
+        .arg(
+            Arg::new("holdout_seed")
+                .long("holdout-seed")
+                .value_name("U64")
+                .help(
+                    "Use the exact holdout seed from eval-sample-cache for a traceable case curve.",
+                )
+                .value_parser(clap::value_parser!(u64)),
         )
         .arg(
             Arg::new("min_joint_valid")
@@ -3835,7 +3846,12 @@ fn run_sample_pixel_curve(args: &SamplePixelCurveArgs) -> Result<()> {
     }
     let rel_days: Vec<f64> = times.iter().map(|&t| (t - time0) / 86400.0).collect();
     let valid_count = valid_positions.len();
-    let target = valid_positions[valid_positions.len() / 2];
+    let target = if let Some(seed) = args.holdout_seed {
+        let mut rng = EvalRng::new(seed);
+        valid_positions[rng.gen_range(valid_positions.len())]
+    } else {
+        valid_positions[valid_positions.len() / 2]
+    };
     let fit_valid_count = valid_count.saturating_sub(1);
     if fit_valid_count < args.min_joint_valid {
         bail!(
