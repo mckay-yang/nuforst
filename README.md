@@ -515,23 +515,11 @@ The baseline crates are separate comparison algorithms and are not part of the N
 
 ## Build And Test
 
-The workspace requires Rust 1.85+ and a system GDAL runtime.
+The workspace requires Rust 1.85+. Raster and CLI builds also need GDAL. `./scripts/setup.sh` installs `libgdal-core` 3.10.3 into `.conda/gdal` with conda, mamba, or micromamba.
 
 ```bash
-cargo check --workspace
-```
-
-On this machine, GDAL-linked tests may need:
-
-```bash
-export DYLD_LIBRARY_PATH=/opt/homebrew/Caskroom/miniforge/base/envs/geo-science/lib
-```
-
-Useful NUFROST-focused commands:
-
-```bash
-cargo test -p nufrost-core --lib
-cargo test -p nufrost-cli --bin nufrost-cli
+./scripts/setup.sh
+./scripts/test.sh
 ```
 
 ## CLI Examples

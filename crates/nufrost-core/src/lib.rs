@@ -7,14 +7,18 @@ pub mod nufrost;
 pub mod time;
 pub mod types;
 
-pub use config::NufrostConfig;
+pub use config::{
+    FrequencySelection, Normalization, NufrostConfig, RidgeSettings, RobustFit, SpectralSettings,
+    StepFit,
+};
 pub use error::NufrostError;
+#[cfg(feature = "raster")]
+pub use nufrost::reconstruct_nufrost_geotiff;
 pub use nufrost::{
     compute_spectrum_direct, compute_spectrum_nufft, next_even, nufrost_fit_pixel,
     nufrost_fit_pixel_vector, nufrost_pixel, nufrost_pixel_vector, nufrost_predict,
-    nufrost_predict_curve, nufrost_predict_vector, nufrost_predict_vector_curve,
-    reconstruct_nufrost_geotiff, refine_parabolic, select_frequencies, select_peaks_adaptive,
-    NufrostResult, NufrostVectorResult,
+    nufrost_predict_curve, nufrost_predict_vector, nufrost_predict_vector_curve, refine_parabolic,
+    select_frequencies, select_peaks_adaptive, NufrostResult, NufrostVectorResult,
 };
 pub use time::{
     find_timestamp_substring, parse_iso8601_to_epoch_seconds, parse_timestamps_to_epoch_seconds,

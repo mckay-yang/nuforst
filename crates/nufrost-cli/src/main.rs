@@ -36,7 +36,7 @@ use hants_core::{
 use nufrost_core::{
     nufrost_fit_pixel_vector, nufrost_pixel, nufrost_pixel_vector, nufrost_predict_vector,
     nufrost_predict_vector_curve, parse_iso8601_to_epoch_seconds, reconstruct_nufrost_geotiff,
-    NufrostConfig,
+    FrequencySelection, NufrostConfig,
 };
 use zhu2015_core::{
     fit_predict_pixel, fit_segment, reconstruct_zhu2015_geotiff, segment_predict, Zhu2015Config,
@@ -70,23 +70,28 @@ enum Algorithm {
     PixelBench(PixelBenchArgs),
 }
 
-#[derive(Debug)]
-struct FullSceneArgs {
+/// Paths, methods, and validity rules shared by one scene run and a batch of scenes.
+#[derive(Debug, Clone)]
+struct SceneRun {
     source_name: String,
-    lon: f64,
-    lat: f64,
     output_root: PathBuf,
     data_root: PathBuf,
     methods: String,
     n_jobs: Option<usize>,
     window_size: Option<usize>,
-    window_lon: Option<f64>,
-    window_lat: Option<f64>,
     min_valid_ratio: f64,
     late_fraction: f64,
+}
+
+#[derive(Debug)]
+struct FullSceneArgs {
+    run: SceneRun,
+    lon: f64,
+    lat: f64,
+    window_lon: Option<f64>,
+    window_lat: Option<f64>,
     scene_cache: Option<PathBuf>,
     nufrost_config: Option<PathBuf>,
-    #[allow(dead_code)]
     frequency_selection: Option<String>,
 }
 
@@ -141,14 +146,7 @@ struct SamplePixelCurveArgs {
 
 #[derive(Debug)]
 struct BatchFullSceneArgs {
-    source_name: String,
-    output_root: PathBuf,
-    data_root: PathBuf,
-    methods: String,
-    n_jobs: Option<usize>,
-    window_size: Option<usize>,
-    min_valid_ratio: f64,
-    late_fraction: f64,
+    run: SceneRun,
     limit: Option<usize>,
     continue_on_error: bool,
 }
@@ -224,18 +222,11 @@ impl Cli {
                 shared: parse_shared_args(sub),
             }),
             "full-scene" => Algorithm::FullScene(FullSceneArgs {
-                source_name: sub.get_one::<String>("source_name").cloned().unwrap(),
+                run: scene_run_from_matches(sub),
                 lon: *sub.get_one::<f64>("lon").unwrap(),
                 lat: *sub.get_one::<f64>("lat").unwrap(),
-                output_root: sub.get_one::<PathBuf>("output_root").cloned().unwrap(),
-                data_root: sub.get_one::<PathBuf>("data_root").cloned().unwrap(),
-                methods: sub.get_one::<String>("methods").cloned().unwrap(),
-                n_jobs: sub.get_one::<usize>("n_jobs").copied(),
-                window_size: sub.get_one::<usize>("window_size").copied(),
                 window_lon: sub.get_one::<f64>("window_lon").copied(),
                 window_lat: sub.get_one::<f64>("window_lat").copied(),
-                min_valid_ratio: *sub.get_one::<f64>("min_valid_ratio").unwrap(),
-                late_fraction: *sub.get_one::<f64>("late_fraction").unwrap(),
                 scene_cache: sub.get_one::<PathBuf>("scene_cache").cloned(),
                 nufrost_config: sub.get_one::<PathBuf>("nufrost_config").cloned(),
                 frequency_selection: sub.get_one::<String>("frequency_selection").cloned(),
@@ -282,14 +273,7 @@ impl Cli {
                 output_csv: sub.get_one::<PathBuf>("output_csv").cloned().unwrap(),
             }),
             "batch-full-scene" => Algorithm::BatchFullScene(BatchFullSceneArgs {
-                source_name: sub.get_one::<String>("source_name").cloned().unwrap(),
-                output_root: sub.get_one::<PathBuf>("output_root").cloned().unwrap(),
-                data_root: sub.get_one::<PathBuf>("data_root").cloned().unwrap(),
-                methods: sub.get_one::<String>("methods").cloned().unwrap(),
-                n_jobs: sub.get_one::<usize>("n_jobs").copied(),
-                window_size: sub.get_one::<usize>("window_size").copied(),
-                min_valid_ratio: *sub.get_one::<f64>("min_valid_ratio").unwrap(),
-                late_fraction: *sub.get_one::<f64>("late_fraction").unwrap(),
+                run: scene_run_from_matches(sub),
                 limit: sub.get_one::<usize>("limit").copied(),
                 continue_on_error: sub.get_flag("continue_on_error"),
             }),
@@ -346,6 +330,19 @@ fn parse_shared_args(matches: &clap::ArgMatches) -> SharedArgs {
         target_time: matches.get_one::<f64>("target_time").copied(),
         output: matches.get_one::<PathBuf>("output").cloned(),
         threads: matches.get_one::<usize>("threads").copied().unwrap_or(1),
+    }
+}
+
+fn scene_run_from_matches(matches: &clap::ArgMatches) -> SceneRun {
+    SceneRun {
+        source_name: matches.get_one::<String>("source_name").cloned().unwrap(),
+        output_root: matches.get_one::<PathBuf>("output_root").cloned().unwrap(),
+        data_root: matches.get_one::<PathBuf>("data_root").cloned().unwrap(),
+        methods: matches.get_one::<String>("methods").cloned().unwrap(),
+        n_jobs: matches.get_one::<usize>("n_jobs").copied(),
+        window_size: matches.get_one::<usize>("window_size").copied(),
+        min_valid_ratio: *matches.get_one::<f64>("min_valid_ratio").unwrap(),
+        late_fraction: *matches.get_one::<f64>("late_fraction").unwrap(),
     }
 }
 
@@ -952,7 +949,7 @@ fn load_fixture_npz(path: &std::path::Path) -> Result<FixtureData> {
 /// Default NUFROST config matching Python `config/nufrost.json`.
 fn default_nufrost_config() -> NufrostConfig {
     let full_json = r#"{
-        "nufrost":{"modes":64,"eps":1e-12,"num_peaks":10,"power_cum":0.7,"ignore_dc_hz":1e-10,"frequency_selection":"all","preferred_periods_days":"365.25,182.625,91.3125,30.4375","preferred_top_k":4,"spectral_top_k":8,"spectral_merge_tol":0.15,"refine_peaks":true,"include_trend":true,"ridge_lam":2.0,"freq_weight":256.0,"huber_iters":3,"huber_delta":0.05,"min_obs":12,"outlier_sigma":2.5,"outlier_reject_iters":2,"outlier_reject_sigma":2.5,"outlier_reject_max_fraction":0.35,"lambda_step":0.05,"lambda_high":0.005,"low_freq_period_days":60.0,"step_dt_weighting":true,"max_outer_iter":5,"outer_tol":0.001,"joint_outlier":true,"joint_outlier_sigma":2.5,"admm_rho":1.0,"admm_max_iter":80,"admm_tol":0.0001,"private_top_k_per_band":2,"private_freq_penalty_mult":1.5},
+        "nufrost":{"modes":64,"num_peaks":10,"power_cum":0.7,"ignore_dc_hz":1e-10,"frequency_selection":"all","preferred_periods_days":"365.25,182.625,91.3125,30.4375","preferred_top_k":4,"spectral_top_k":8,"spectral_merge_tol":0.15,"refine_peaks":true,"include_trend":true,"ridge_lam":2.0,"freq_weight":256.0,"huber_iters":3,"huber_delta":0.05,"min_obs":12,"outlier_sigma":2.5,"outlier_reject_iters":2,"outlier_reject_sigma":2.5,"outlier_reject_max_fraction":0.35,"lambda_step":0.05,"lambda_high":0.005,"low_freq_period_days":60.0,"step_dt_weighting":true,"max_outer_iter":5,"outer_tol":0.001,"joint_outlier":true},
         "hants":{"nof":3,"sf":"high","fet":500.0,"dod":5,"period":365.25,"valid_min":null,"valid_max":null},
         "zhu2015":{"lasso_alpha":0.1}
     }"#;
@@ -1768,7 +1765,7 @@ fn time_axis_days(masked_timestamps: &[String], target_epoch: f64) -> Result<(Ve
 }
 
 fn run_full_scene_from_cache_streaming(args: &FullSceneArgs, cache_dir: &Path) -> Result<()> {
-    let methods = validate_full_scene_methods(&args.methods)?;
+    let methods = validate_full_scene_methods(&args.run.methods)?;
     let load_start = Instant::now();
     eprintln!("Opening scene cache for streaming: {}", cache_dir.display());
     let view = Arc::new(CliSceneCacheView::open(cache_dir)?);
@@ -1782,19 +1779,19 @@ fn run_full_scene_from_cache_streaming(args: &FullSceneArgs, cache_dir: &Path) -
 
     let target_time_str = if let Some(target) = scene_cache::load_cached_target_timestamp(
         cache_dir,
-        args.min_valid_ratio,
-        args.late_fraction,
+        args.run.min_valid_ratio,
+        args.run.late_fraction,
     )? {
         eprintln!("Using cached shared target timestamp: {target}");
         target
     } else {
         eprintln!("Selecting shared target timestamp from mmap cache...");
         let target =
-            choose_target_timestamp_from_cache(&view, args.min_valid_ratio, args.late_fraction)?;
+            choose_target_timestamp_from_cache(&view, args.run.min_valid_ratio, args.run.late_fraction)?;
         scene_cache::store_cached_target_timestamp(
             cache_dir,
-            args.min_valid_ratio,
-            args.late_fraction,
+            args.run.min_valid_ratio,
+            args.run.late_fraction,
             &target,
         )?;
         target
@@ -1838,13 +1835,14 @@ fn run_full_scene_from_cache_streaming(args: &FullSceneArgs, cache_dir: &Path) -
     let mut nufrost_conf =
         load_nufrost_config(Some(nufrost_config_path)).unwrap_or_else(|_| default_nufrost_config());
     if let Some(mode) = &args.frequency_selection {
-        nufrost_conf.frequency_selection = mode.clone();
+        nufrost_conf.spectral.selection = FrequencySelection::from_name(mode)
+            .with_context(|| format!("unknown frequency selection mode: {mode}"))?;
     }
     let hants_conf = default_hants_config();
     let zhu2015_conf = default_zhu2015_config();
 
-    let source_name = &args.source_name;
-    let output_root = &args.output_root;
+    let source_name = &args.run.source_name;
+    let output_root = &args.run.output_root;
     let loc_token = full_scene::location_token(args.lon, args.lat);
 
     let mut prediction_outputs = serde_json::Map::new();
@@ -2269,7 +2267,7 @@ fn write_full_scene_summary(
     metrics_by_method: serde_json::Map<String, serde_json::Value>,
     gt_path: &Path,
 ) -> Result<()> {
-    let summary_dir = args.output_root.join("run_summaries");
+    let summary_dir = args.run.output_root.join("run_summaries");
     fs::create_dir_all(&summary_dir)?;
     let safe_time = target_time_str.replace(':', "-");
     let loc_token6 = full_scene::location_output_token(args.lon, args.lat);
@@ -2305,7 +2303,7 @@ fn write_full_scene_summary(
         merged_metrics.insert(method, metric);
     }
 
-    let updated_methods = validate_full_scene_methods(&args.methods)?;
+    let updated_methods = validate_full_scene_methods(&args.run.methods)?;
     let mut merged_methods: Vec<String> = merged_metrics.keys().cloned().collect();
     for method in &updated_methods {
         if !merged_methods.iter().any(|m| m == method) {
@@ -2325,9 +2323,9 @@ fn write_full_scene_summary(
         "methods_run": merged_methods,
         "methods_updated": updated_methods,
         "ordered_bands": ordered_bands,
-        "min_valid_ratio": args.min_valid_ratio,
-        "late_fraction": args.late_fraction,
-        "window_size": args.window_size,
+        "min_valid_ratio": args.run.min_valid_ratio,
+        "late_fraction": args.run.late_fraction,
+        "window_size": args.run.window_size,
         "window_lon": args.window_lon,
         "window_lat": args.window_lat,
         "scene_cache": cache_dir.map(|p| p.display().to_string()),
@@ -2610,7 +2608,7 @@ fn run_pixel_bench(args: &PixelBenchArgs) -> Result<()> {
                 masked_days[i].is_finite() && masked_series.iter().all(|b| b[i].is_finite())
             })
             .collect();
-        if valid_idx.len() < (config.min_obs as usize).max(3) {
+        if valid_idx.len() < (config.robust.min_obs as usize).max(3) {
             continue;
         }
         let t_sec: Vec<f64> = valid_idx
@@ -2629,7 +2627,7 @@ fn run_pixel_bench(args: &PixelBenchArgs) -> Result<()> {
         let (_freqs, power) = nufrost_core::nufft::type1_vector_power_kb(
             &t_rel,
             &spectrum_dims,
-            config.modes as usize,
+            config.spectral.modes as usize,
             nufrost_core::nufft::NufftOptions::default(),
         );
         nufft_bins = power.len();
@@ -2695,29 +2693,29 @@ fn run_pixel_bench(args: &PixelBenchArgs) -> Result<()> {
 }
 
 fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
-    if let Some(n) = args.n_jobs {
+    if let Some(n) = args.run.n_jobs {
         rayon::ThreadPoolBuilder::new()
             .num_threads(n)
             .build_global()
             .context("Failed to build rayon thread pool")?;
     }
 
-    let methods = validate_full_scene_methods(&args.methods)?;
+    let methods = validate_full_scene_methods(&args.run.methods)?;
 
-    if args.window_size.is_none() {
+    if args.run.window_size.is_none() {
         let cache_dir = args.scene_cache.clone().unwrap_or_else(|| {
             scene_cache::default_scene_cache_dir(
-                &default_scene_cache_root(&args.data_root, &args.source_name),
-                &args.source_name,
+                &default_scene_cache_root(&args.run.data_root, &args.run.source_name),
+                &args.run.source_name,
                 args.lon,
                 args.lat,
             )
         });
         if !cache_dir.join("meta.json").is_file() || !cache_dir.join("cube.f32.bin").is_file() {
             scene_cache::build_scene_cache(
-                &args.data_root,
-                &default_scene_cache_root(&args.data_root, &args.source_name),
-                &args.source_name,
+                &args.run.data_root,
+                &default_scene_cache_root(&args.run.data_root, &args.run.source_name),
+                &args.run.source_name,
                 args.lon,
                 args.lat,
                 args.scene_cache.as_deref(),
@@ -2734,15 +2732,15 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
         meta,
         cache_dir,
     } = if let Some(cache_dir) = &args.scene_cache {
-        if args.window_size.is_some() {
+        if args.run.window_size.is_some() {
             bail!("--scene-cache currently supports full-scene runs only, not --window-size");
         }
         eprintln!("Loading scene from mmap cache: {}", cache_dir.display());
         scene_cache::load_scene_cache(cache_dir)?
-    } else if let Some(window_size) = args.window_size {
+    } else if let Some(window_size) = args.run.window_size {
         scene_cache::load_scene_from_geotiffs_window(
-            &args.data_root,
-            &args.source_name,
+            &args.run.data_root,
+            &args.run.source_name,
             args.lon,
             args.lat,
             window_size,
@@ -2751,9 +2749,9 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
         )?
     } else {
         scene_cache::load_or_build_scene_cache(
-            &args.data_root,
-            &default_scene_cache_root(&args.data_root, &args.source_name),
-            &args.source_name,
+            &args.run.data_root,
+            &default_scene_cache_root(&args.run.data_root, &args.run.source_name),
+            &args.run.source_name,
             args.lon,
             args.lat,
         )?
@@ -2770,8 +2768,8 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
     let target_time_str = if let Some(cache_dir) = &cache_dir {
         if let Some(target) = scene_cache::load_cached_target_timestamp(
             cache_dir,
-            args.min_valid_ratio,
-            args.late_fraction,
+            args.run.min_valid_ratio,
+            args.run.late_fraction,
         )? {
             eprintln!("Using cached shared target timestamp: {target}");
             target
@@ -2780,13 +2778,13 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
             let (target, _completeness) = choose_shared_target_timestamp(
                 &band_cubes,
                 &band_timestamps,
-                args.min_valid_ratio,
-                args.late_fraction,
+                args.run.min_valid_ratio,
+                args.run.late_fraction,
             )?;
             scene_cache::store_cached_target_timestamp(
                 cache_dir,
-                args.min_valid_ratio,
-                args.late_fraction,
+                args.run.min_valid_ratio,
+                args.run.late_fraction,
                 &target,
             )?;
             target
@@ -2796,8 +2794,8 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
         let (target, _completeness) = choose_shared_target_timestamp(
             &band_cubes,
             &band_timestamps,
-            args.min_valid_ratio,
-            args.late_fraction,
+            args.run.min_valid_ratio,
+            args.run.late_fraction,
         )?;
         target
     };
@@ -2842,14 +2840,15 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
     let mut nufrost_conf =
         load_nufrost_config(Some(nufrost_config_path)).unwrap_or_else(|_| default_nufrost_config());
     if let Some(mode) = &args.frequency_selection {
-        nufrost_conf.frequency_selection = mode.clone();
+        nufrost_conf.spectral.selection = FrequencySelection::from_name(mode)
+            .with_context(|| format!("unknown frequency selection mode: {mode}"))?;
     }
     let hants_conf = default_hants_config();
     let zhu2015_conf = default_zhu2015_config();
 
     // 11. Per-method reconstruction
-    let source_name = &args.source_name;
-    let output_root = &args.output_root;
+    let source_name = &args.run.source_name;
+    let output_root = &args.run.output_root;
     let loc_token = full_scene::location_token(args.lon, args.lat);
 
     let mut prediction_outputs = serde_json::Map::new();
@@ -2923,17 +2922,6 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
                                 }
                                 if !ts_buf.is_empty() {
                                     match method_str {
-                                        "nufrost" => {
-                                            let val = nufrost_pixel(
-                                                &ts_buf,
-                                                &obs_buf,
-                                                target_day,
-                                                &nufrost_conf,
-                                            )
-                                            .0;
-                                            row_out[c] =
-                                                if val.is_finite() { val } else { f64::NAN };
-                                        }
                                         "hants" => {
                                             let val = hants_pixel(
                                                 &ts_buf,
@@ -3070,9 +3058,9 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
         "methods_run": merged_methods,
         "methods_updated": methods,
         "ordered_bands": ordered_bands,
-        "min_valid_ratio": args.min_valid_ratio,
-        "late_fraction": args.late_fraction,
-        "window_size": args.window_size,
+        "min_valid_ratio": args.run.min_valid_ratio,
+        "late_fraction": args.run.late_fraction,
+        "window_size": args.run.window_size,
         "window_lon": args.window_lon,
         "window_lat": args.window_lat,
         "scene_cache": cache_dir.as_ref().map(|p| p.display().to_string()),
@@ -3090,22 +3078,22 @@ fn run_full_scene(args: &FullSceneArgs) -> Result<()> {
 }
 
 fn run_batch_full_scene(args: &BatchFullSceneArgs) -> Result<()> {
-    validate_full_scene_methods(&args.methods)?;
-    if let Some(n) = args.n_jobs {
+    validate_full_scene_methods(&args.run.methods)?;
+    if let Some(n) = args.run.n_jobs {
         rayon::ThreadPoolBuilder::new()
             .num_threads(n)
             .build_global()
             .context("Failed to build rayon thread pool")?;
     }
 
-    let mut locations = discover_complete_sentinel_locations(&args.data_root, &args.source_name)?;
+    let mut locations = discover_complete_sentinel_locations(&args.run.data_root, &args.run.source_name)?;
     if let Some(limit) = args.limit {
         locations.truncate(limit);
     }
     if locations.is_empty() {
         bail!(
             "No complete Sentinel-2 locations found in {}",
-            source_data_dir(&args.data_root, &args.source_name).display()
+            source_data_dir(&args.run.data_root, &args.run.source_name).display()
         );
     }
     eprintln!("Discovered {} complete locations.", locations.len());
@@ -3120,18 +3108,20 @@ fn run_batch_full_scene(args: &BatchFullSceneArgs) -> Result<()> {
             locations.len()
         );
         let scene_args = FullSceneArgs {
-            source_name: args.source_name.clone(),
+            run: SceneRun {
+                source_name: args.run.source_name.clone(),
+                output_root: args.run.output_root.clone(),
+                data_root: args.run.data_root.clone(),
+                methods: args.run.methods.clone(),
+                n_jobs: None,
+                window_size: args.run.window_size,
+                min_valid_ratio: args.run.min_valid_ratio,
+                late_fraction: args.run.late_fraction,
+            },
             lon,
             lat,
-            output_root: args.output_root.clone(),
-            data_root: args.data_root.clone(),
-            methods: args.methods.clone(),
-            n_jobs: None,
-            window_size: args.window_size,
             window_lon: None,
             window_lat: None,
-            min_valid_ratio: args.min_valid_ratio,
-            late_fraction: args.late_fraction,
             scene_cache: None,
             nufrost_config: None,
             frequency_selection: None,
@@ -3160,21 +3150,21 @@ fn run_batch_full_scene(args: &BatchFullSceneArgs) -> Result<()> {
         }
     }
 
-    let summary_dir = args.output_root.join("run_summaries");
+    let summary_dir = args.run.output_root.join("run_summaries");
     fs::create_dir_all(&summary_dir)?;
     let summary_path = summary_dir.join(format!(
         "batch_summary_{}_{}.json",
-        args.source_name,
+        args.run.source_name,
         chrono::Utc::now().format("%Y%m%dT%H%M%SZ")
     ));
     let summary = serde_json::json!({
-        "source_name": args.source_name,
-        "data_root": args.data_root.display().to_string(),
-        "output_root": args.output_root.display().to_string(),
-        "methods": args.methods,
-        "window_size": args.window_size,
-        "min_valid_ratio": args.min_valid_ratio,
-        "late_fraction": args.late_fraction,
+        "source_name": args.run.source_name,
+        "data_root": args.run.data_root.display().to_string(),
+        "output_root": args.run.output_root.display().to_string(),
+        "methods": args.run.methods,
+        "window_size": args.run.window_size,
+        "min_valid_ratio": args.run.min_valid_ratio,
+        "late_fraction": args.run.late_fraction,
         "n_locations": locations.len(),
         "n_success": runs.len(),
         "n_failed": failures.len(),
@@ -4634,12 +4624,12 @@ mod tests {
         ]);
         match &cli.algorithm {
             Algorithm::BatchFullScene(args) => {
-                assert_eq!(args.source_name, "sentinel-2");
-                assert_eq!(args.data_root, std::path::PathBuf::from("data"));
-                assert_eq!(args.output_root, std::path::PathBuf::from("/tmp/out"));
-                assert_eq!(args.methods, "nufrost,hants");
-                assert_eq!(args.window_size, Some(3));
-                assert_eq!(args.n_jobs, Some(4));
+                assert_eq!(args.run.source_name, "sentinel-2");
+                assert_eq!(args.run.data_root, std::path::PathBuf::from("data"));
+                assert_eq!(args.run.output_root, std::path::PathBuf::from("/tmp/out"));
+                assert_eq!(args.run.methods, "nufrost,hants");
+                assert_eq!(args.run.window_size, Some(3));
+                assert_eq!(args.run.n_jobs, Some(4));
                 assert_eq!(args.limit, Some(2));
                 assert!(args.continue_on_error);
             }

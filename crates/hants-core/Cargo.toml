@@ -5,8 +5,12 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
+[features]
+default = []
+raster = ["dep:gdal"]
+
 [dependencies]
-gdal = { path = "../gdal" }
+gdal = { path = "../gdal", optional = true }
 anyhow.workspace = true
 ndarray.workspace = true
 rayon.workspace = true
