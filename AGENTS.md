@@ -8,7 +8,7 @@
 
 ## Branch Policy
 
-- Always retain the long-lived branches `main`, `develop`, `paper`, and `feature/nufrost-cd`.
+- Always retain the long-lived branches `main`, `develop`, and `feature/nufrost-cd`.
 - Name feature branches with the `feature/` prefix.
 - Name experimental branches with the `exp/` prefix.
 - Name temporary Codex branches with the `codex/` prefix.
@@ -44,7 +44,9 @@ Dependency direction:
 
 ## Output And Verification
 
-- Use `cargo check --workspace` for compile verification.
+- Use `./scripts/test.sh` for the normal test run. It always tests `nufrost-core`, `hants-core`, and `zhu2015-core` without GDAL, then runs the local `gdal` crate and `nufrost-cli` when `pkg-config` can find GDAL.
+- Install GDAL with `./scripts/setup.sh`. It accepts conda, mamba, or micromamba and creates a gitignored prefix at `.conda/gdal` with `libgdal-core` 3.10.3. `./scripts/test.sh` prefers that prefix. `crates/gdal/build.rs` records its library directory as an rpath.
+- `nufrost-core`, `hants-core`, and `zhu2015-core` keep raster I/O behind the `raster` feature. `nufrost-cli` enables that feature. Algorithm tests stay on the default features so they do not compile `gdal-sys`.
 - Use `cargo test -p gdal@0.1.0 --lib` for the local `gdal` crate because the workspace also depends on upstream `gdal`.
-- GDAL-linked tests may need `DYLD_LIBRARY_PATH=/opt/homebrew/Caskroom/miniforge/base/envs/geo-science/lib` on this machine.
+- GDAL-linked tests need the GDAL library directory on the dynamic linker path. `./scripts/test.sh` sets `DYLD_LIBRARY_PATH` on macOS and `LD_LIBRARY_PATH` on Linux from `pkg-config --variable=libdir gdal`.
 - Python scripts, notebooks, and pytest tests have been removed from the active workflow. Future plotting scripts should be rebuilt around Rust outputs.

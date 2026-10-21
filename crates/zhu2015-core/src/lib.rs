@@ -315,6 +315,7 @@ pub fn fit_predict_pixel(
 ///
 /// GDAL handles raster I/O and per-pixel traversal; this crate supplies the
 /// Zhu2015 pixel model.
+#[cfg(feature = "raster")]
 pub fn reconstruct_zhu2015_geotiff<P: AsRef<std::path::Path>>(
     reader: &gdal::RasterReader,
     timestamps_days: &[f64],

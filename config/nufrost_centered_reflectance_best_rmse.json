@@ -1,6 +1,5 @@
 {
   "modes": 64,
-  "eps": 1e-12,
   "num_peaks": 10,
   "power_cum": 0.7,
   "ignore_dc_hz": 1e-10,
@@ -28,9 +27,5 @@
   "step_dt_weighting": true,
   "max_outer_iter": 5,
   "outer_tol": 0.001,
-  "joint_outlier": true,
-  "joint_outlier_sigma": 2.5,
-  "admm_rho": 1.0,
-  "admm_max_iter": 80,
-  "admm_tol": 0.0001
+  "joint_outlier": true
 }

@@ -14,6 +14,7 @@ $RECYCLE.BIN/
 # ===== IDE / Editor =====
 .idea/
 .vscode/
+*.code-workspace
 *.swp
 *.swo
 *~
@@ -79,6 +80,7 @@ database/
 log/
 
 # ===== Project tooling =====
+AGENTS_*.md
 .plans/
 .specs/
 .worktrees/

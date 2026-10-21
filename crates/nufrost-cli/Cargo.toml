@@ -6,9 +6,9 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-nufrost-core = { path = "../nufrost-core" }
-hants-core = { path = "../hants-core" }
-zhu2015-core = { path = "../zhu2015-core" }
+nufrost-core = { path = "../nufrost-core", features = ["raster"] }
+hants-core = { path = "../hants-core", features = ["raster"] }
+zhu2015-core = { path = "../zhu2015-core", features = ["raster"] }
 gdal = { path = "../gdal" }
 clap.workspace = true
 anyhow.workspace = true

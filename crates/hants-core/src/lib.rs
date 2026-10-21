@@ -445,6 +445,7 @@ pub fn hants_pixel(
 ///
 /// GDAL handles raster I/O and per-pixel traversal; this crate supplies the
 /// HANTS pixel model.
+#[cfg(feature = "raster")]
 pub fn reconstruct_hants_geotiff<P: AsRef<std::path::Path>>(
     reader: &gdal::RasterReader,
     timestamps_days: &[f64],
