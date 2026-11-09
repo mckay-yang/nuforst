@@ -4,6 +4,7 @@ members = [
     "crates/gdal",
     "crates/nufrost-core",
     "crates/hants-core",
+    "crates/hapo-core",
     "crates/zhu2015-core",
     "crates/nufrost-cli",
 ]

@@ -16,7 +16,7 @@ for pkg_dir in "$gdal_prefix/lib/pkgconfig" "$gdal_prefix/lib64/pkgconfig"; do
 done
 
 echo "== algorithm tests =="
-cargo test -p nufrost-core -p hants-core -p zhu2015-core
+cargo test -p nufrost-core -p hants-core -p zhu2015-core -p hapo-core
 
 if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists gdal; then
     echo "GDAL not found via pkg-config; skipped gdal and nufrost-cli tests."
@@ -39,5 +39,5 @@ fi
 echo "== raster and CLI tests =="
 cargo test -p gdal@0.1.0 --lib
 cargo test -p gdal@0.1.0 --test time_series_fixtures
-cargo test -p nufrost-cli --lib
+cargo test -p nufrost-cli --bin nufrost-cli
 cargo test -p nufrost-cli --test full_scene_fixtures

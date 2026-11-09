@@ -1,0 +1,20 @@
+[package]
+name = "nufrost-paper-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.85"
+publish = false
+
+[dependencies]
+gdal = { path = "../../../../crates/gdal" }
+anyhow = "1"
+ndarray = { version = "0.16", features = ["rayon"] }
+rayon = "1.10"
+chrono = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+approx = "0.5"

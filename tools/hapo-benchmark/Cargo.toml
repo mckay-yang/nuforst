@@ -1,0 +1,30 @@
+[package]
+name = "hapo-benchmark"
+version = "0.1.0"
+edition = "2021"
+[workspace]
+[features]
+scene = ["dep:raster", "dep:ndarray"]
+
+[[bin]]
+name = "full_scene"
+path = "src/bin/full_scene.rs"
+required-features = ["scene"]
+
+[[bin]]
+name = "scene_preview"
+path = "src/bin/scene_preview.rs"
+required-features = ["scene"]
+
+[dependencies]
+anyhow = "1"
+memmap2 = "0.9"
+csv = "1.4"
+rayon = "1.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hapo-core = { path = "../../crates/hapo-core" }
+ndarray = { version = "0.16", optional = true }
+raster = { package = "gdal", path = "../../crates/gdal", optional = true }
+[profile.release]
+opt-level = 3
