@@ -1,0 +1,18 @@
+{
+  "crates/nufrost-cli/examples/paper_sample_rerun.rs": "8cf57f663d1cc900861ee7d82bf1aa8dc01fcfefb6f53a22ebddfa945191f132",
+  "crates/nufrost-cli/examples/paper_scene_rerun.rs": "33d1684967d2e407b946ada22959c8772fcf820edfa3378baba43c4964050545",
+  "crates/nufrost-cli/examples/support/paper_source_policy.rs": "63930a43d28ec4f02bf1e1e58fc8e3243b99912a3091d0b0757a5583a50219ad",
+  "config/nufrost.json": "a62476f844890a275fbfb39f58c8f13146c1295f2dda5efa6dcca1f94dc91a6f",
+  "config/hants.json": "792d5519c6e974fe16a9bf32626d4936d7afce3ec06a2a00eb9999b051de6263",
+  "config/zhu2015.json": "a70e83ea55e930b9f6afa713fcbb3cb6436199a8adaa6c1467c28228ccd6ee2c",
+  "crates/nufrost-core/src/types.rs": "186f457d2bf12409aba125349695291abff21e7a02b8fe4a24dcd782026933e3",
+  "crates/nufrost-core/src/error.rs": "bd6f526efdb388ae5c8b69d9cf23252619f1ba9d2d358d9d3aa1570e4f32207d",
+  "crates/nufrost-core/src/config.rs": "ff3ec1c668c449f98991e31ff9d880019efc7397fd527657bb546659f4756fcd",
+  "crates/nufrost-core/src/lib.rs": "aef1784b13576c4b2e5235fb6ca5f597c30b53ec59c680a5c6077c96ef33254a",
+  "crates/nufrost-core/src/time.rs": "26604e98b0986d58fcf683a50ae2bab8781aa4e48d30ea1ffcfadc186db1060e",
+  "crates/nufrost-core/src/nufft.rs": "79008865244526fb9a4ba7d7a184dfab156fa701079a66ba932db139e53ea49f",
+  "crates/nufrost-core/src/nufrost.rs": "aa29c3ace70c9c4c3112b64bb35f289e888b4b17483fd6c188bd7fab5ba90662",
+  "crates/nufrost-core/src/supported.rs": "e2ef29201b4aae50cbfa0690bd5d264cd20f7c2694b9005cd1e43c82a84496bc",
+  "crates/nufrost-core/src/supported/year_analog.rs": "dc8592d37ab911cccfc1c6a41dd2fd2e94031b61fe61b28b65b3828aa61ec91a",
+  "crates/nufrost-core/src/supported/seasonal.rs": "64af41d6b1a4a86d5093260201f2c89118e5262a02483045e89747f176c09570"
+}

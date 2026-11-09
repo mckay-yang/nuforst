@@ -2,7 +2,7 @@
 
 NUFROST is a Rust-first research implementation for reconstructing optical remote-sensing time series from irregular satellite observations. The active method is a vector-valued, non-uniform Fourier reconstruction model: it first estimates a shared spectral support from non-uniform observation times, then fits a stable multi-band trajectory with a date-level robust multi-output ridge model.
 
-This README documents the current NUFROST mathematical model only.
+The paper experiments use [Supported V1 and the original comparison runners](tools/paper-reproduction/README.md) together with the [HAPO baseline](tools/hapo-benchmark/README.md). The sections below describe the current NUFROST model in `crates/nufrost-core`.
 
 ## Problem
 
